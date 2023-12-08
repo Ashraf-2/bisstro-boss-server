@@ -34,21 +34,28 @@ async function run() {
     // const menuCL = database.collection("menu");
     // const reviewsCL = database.collection("reviewsCL");
     const menuCollection = client.db("bistroBossDB").collection("menu");
+    const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
 
     
     //menu get
     
-    // app.get('/menu', async(req,res)=> {
-    //   try{
-    //     const result = await menuCollection.find().toArray();
-    //     res.send(result);
-    //   }catch(error){
-    //     console.log(error);
-    //   }
-    // })
-    app.get('/menuu', async(req,res)=> {
-      const result = await menuCollection.find().toArray();
-      res.send(result);
+    app.get('/menu', async(req,res)=> {
+      try{
+        const result = await menuCollection.find().toArray();
+        res.send(result);
+      }catch(error){
+        console.log(error);
+      }
+    })
+
+    // reviews get
+    app.get('/reviews', async(req,res)=> {
+      try{
+        const result = await reviewsCollection.find().toArray();
+        res.send(result);
+      }catch(error){
+        console.log(error);
+      }
     })
     
     
