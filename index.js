@@ -10,6 +10,8 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+console.log(process.env.DB_USER)
+console.log(process.env.DB_PASS)
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bx5otjq.mongodb.net/?retryWrites=true&w=majority`;
@@ -27,10 +29,23 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    
+    //database and collections 
+    // const BistroBossDB = client.db("bistroBossDB");
+    // const menuCL = database.collection("menu");
+    // const reviewsCL = database.collection("reviewsCL");
+    const menuCollection = client.db("bistroBossDB").collection("menu");
+
     
     //menu get
     
+    app.get('/menu', async(req,res)=> {
+      try{
+        const result = await menuCollection.find().toArray();
+        res.send(result);
+      }catch(error){
+        console.log(error);
+      }
+    })
     
     
     
@@ -52,5 +67,5 @@ app.get('/',(req,res) => {
 })
 
 app.listen(port, ()=> {
-    console.log(`bistroo boss server is runnin on port ${port}`)
+    console.log(`bistroo boss server is running on port: ${port}`)
 } )
