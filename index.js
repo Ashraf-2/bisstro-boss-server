@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const app = express(); 
+const app = express();
 
-const port = process.env.PORT || 5000; 
+const port = process.env.PORT || 5000;
 
 
 //middlewear
@@ -35,33 +35,52 @@ async function run() {
     // const reviewsCL = database.collection("reviewsCL");
     const menuCollection = client.db("bistroBossDB").collection("menu");
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
+    const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
 
-    
+
     //menu get
-    
-    app.get('/menu', async(req,res)=> {
-      try{
+
+    app.get('/menu', async (req, res) => {
+      try {
         const result = await menuCollection.find().toArray();
         res.send(result);
-      }catch(error){
+      } catch (error) {
         console.log(error);
       }
     })
 
     // reviews get
-    app.get('/reviews', async(req,res)=> {
-      try{
+    app.get('/reviews', async (req, res) => {
+      try {
         const result = await reviewsCollection.find().toArray();
         res.send(result);
-      }catch(error){
+      } catch (error) {
         console.log(error);
       }
     })
-    
-    
-    
-    
-    
+
+    app.get('/carts', async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = {email: email};
+        const result = await cartsCollection.find(query).toArray();   //quary for searching based on client site query-search
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    })
+
+    app.post('/carts', async (req, res) => {
+      const cartItem = req.body;
+      console.log(cartItem);
+      const result = await cartsCollection.insertOne(cartItem);
+      res.send(result);
+    })
+
+
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -73,10 +92,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/',(req,res) => {
-    res.send('bistro boss server is running');
+app.get('/', (req, res) => {
+  res.send('bistro boss server is running');
 })
 
-app.listen(port, ()=> {
-    console.log(`bistroo boss server is running on port: ${port}`)
-} )
+app.listen(port, () => {
+  console.log(`bistroo boss server is running on port: ${port}`)
+})
