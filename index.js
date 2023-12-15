@@ -33,6 +33,7 @@ async function run() {
     // const BistroBossDB = client.db("bistroBossDB");
     // const menuCL = database.collection("menu");
     // const reviewsCL = database.collection("reviewsCL");
+    const userCollection = client.db("bistroBossDB").collection("user");
     const menuCollection = client.db("bistroBossDB").collection("menu");
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
@@ -58,11 +59,11 @@ async function run() {
         console.log(error);
       }
     })
-
+    //carts related crud operation
     app.get('/carts', async (req, res) => {
       try {
         const email = req.query.email;
-        const query = {email: email};
+        const query = { email: email };
         const result = await cartsCollection.find(query).toArray();   //quary for searching based on client site query-search
         res.send(result);
       } catch (error) {
@@ -78,13 +79,28 @@ async function run() {
     })
 
     //cart item delete
-    app.delete('/carts/:id',async(req,res) =>{
+    app.delete('/carts/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
     })
 
+
+    //user related crud operation
+    app.get('/users', async (req, res) => {
+      try {
+        const result = await userCollection.find().toArray();
+        res.send(result);
+      }catch(error){
+        console.log(error);
+      }
+    })
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
 
 
 
