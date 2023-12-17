@@ -37,7 +37,7 @@ async function run() {
     const menuCollection = client.db("bistroBossDB").collection("menu");
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
- 
+
 
 
     //menu get
@@ -93,7 +93,7 @@ async function run() {
       try {
         const result = await userCollection.find().toArray();
         res.send(result);
-      }catch(error){
+      } catch (error) {
         console.log(error);
       }
     })
@@ -101,13 +101,39 @@ async function run() {
     app.post('/users', async (req, res) => {
       const user = req.body;
       //insert user if the user does not exist
-      const query = {email: user.email}
+      const query = { email: user.email }
       //you can do this in 3 ways. ex 1.unique email, 2. upser 3. simple checking.
       const existUser = await userCollection.findOne(query);
-      if(existUser){
-        return res.send({message: "sorry, user already registered to the database.", insertedId: null})
+      if (existUser) {
+        return res.send({ message: "sorry, user already registered to the database.", insertedId: null })
       }
       const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
+
+    app.delete('/users/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await userCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.log(error)
+      }
+    })
+
+    //to make change user roll and admin roll
+    app.patch('/users/admin/:id', async(req,res) =>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+
+      const updatedDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
+
+      const result = await userCollection.updateOne(filter,updatedDoc);
       res.send(result);
     })
 
