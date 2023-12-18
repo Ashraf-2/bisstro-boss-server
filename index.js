@@ -4,7 +4,7 @@ require('dotenv').config();
 const app = express();
 
 const port = process.env.PORT || 5000;
-
+const jwt = require('jsonwebtoken');
 
 //middlewear
 app.use(cors());
@@ -38,6 +38,16 @@ async function run() {
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
 
+    //JWT related api
+    app.post('/jwt', async (req, res) => {
+      try {
+        const user = req.body;      //this is payload
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '4h' });
+        res.send({ token })
+      } catch (error) {
+        console.log(error)
+      }
+    })
 
 
     //menu get
@@ -60,6 +70,7 @@ async function run() {
         console.log(error);
       }
     })
+    
     //carts related crud operation
     app.get('/carts', async (req, res) => {
       try {
@@ -87,9 +98,19 @@ async function run() {
       res.send(result);
     })
 
+    //MiddleWears - to varify token 
+    const varifyToken = (req,res, next)=> {
+      console.log('inside verified token: ',req.headers);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'forbidden-access'})
+      }
+      const token = req.headers.authorization.split(' ')[1];    //use your brain to know the functionality of this line :) 😊 
+      if(!token)
+      next();
+    }
 
     //user related crud operation
-    app.get('/users', async (req, res) => {
+    app.get('/users', varifyToken, async (req, res) => {
       try {
         const result = await userCollection.find().toArray();
         res.send(result);
@@ -123,9 +144,9 @@ async function run() {
     })
 
     //to make change user roll and admin roll
-    app.patch('/users/admin/:id', async(req,res) =>{
+    app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
 
       const updatedDoc = {
         $set: {
@@ -133,7 +154,7 @@ async function run() {
         }
       }
 
-      const result = await userCollection.updateOne(filter,updatedDoc);
+      const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     })
 
