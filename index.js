@@ -38,16 +38,7 @@ async function run() {
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
 
-    //JWT related api
-    app.post('/jwt', async (req, res) => {
-      try {
-        const user = req.body;      //this is payload
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '4h' });
-        res.send({ token })
-      } catch (error) {
-        console.log(error)
-      }
-    })
+
 
 
     //menu get
@@ -70,7 +61,7 @@ async function run() {
         console.log(error);
       }
     })
-    
+
     //carts related crud operation
     app.get('/carts', async (req, res) => {
       try {
@@ -98,19 +89,51 @@ async function run() {
       res.send(result);
     })
 
-    //MiddleWears - to varify token 
-    const varifyToken = (req,res, next)=> {
-      console.log('inside verified token: ',req.headers);
-      if(!req.headers.authorization){
-        return res.status(401).send({message: 'forbidden-access'})
+
+
+    //JWT related api
+    app.post('/jwt', async (req, res) => {
+      try {
+        const user = req.body;      //this is payload
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+        res.send({ token })
+      } catch (error) {
+        console.log(error)
+      }
+    })
+
+    //MiddleWears --> Varify Token 
+    const varifyToken = (req, res, next) => {
+      console.log('inside verified token: ', req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Unauthorized access' })
       }
       const token = req.headers.authorization.split(' ')[1];    //use your brain to know the functionality of this line :) 😊 
-      if(!token)
+
+      jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err,decoded)=> {
+        if(err){
+          return res.status(401).send({ message: 'Unauthorized access' })
+        }
+        req.decoded = decoded;
+        next();
+      })
+    }
+
+    //middleWear -=> Verify Admin
+    const varifyAdmin =async (req,res,next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(!isAdmin){
+        return res.status(403).send({message: "Forbidden Access"})
+      }
       next();
     }
 
+
     //user related crud operation
-    app.get('/users', varifyToken, async (req, res) => {
+    app.get('/users', varifyToken,varifyAdmin, async (req, res) => {
       try {
         const result = await userCollection.find().toArray();
         res.send(result);
@@ -132,7 +155,7 @@ async function run() {
       res.send(result);
     })
 
-    app.delete('/users/:id', async (req, res) => {
+    app.delete('/users/:id', varifyToken, varifyAdmin, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -144,18 +167,33 @@ async function run() {
     })
 
     //to make change user roll and admin roll
-    app.patch('/users/admin/:id', async (req, res) => {
+    app.patch('/users/admin/:id', varifyToken, varifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-
       const updatedDoc = {
         $set: {
           role: 'admin'
         }
       }
-
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
+    })
+
+    //admin related api
+    app.get("/users/admin/:email",varifyToken, async(req,res)=> {
+      const email = req.params.email;
+      if(email !== req.decoded.email){
+        return res.status(403).send({message: "Forbidden access"});
+
+      }
+      const quary = {email: email};
+      const user = await userCollection.findOne(quary);
+      let admin = false;
+      if(user){
+        admin  = user?.role === 'admin';    //admin will true
+        // if(user?.role ==)
+      }
+      res.send({admin});
     })
 
 
