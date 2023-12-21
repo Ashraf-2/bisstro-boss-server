@@ -38,70 +38,6 @@ async function run() {
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
 
-
-
-
-    //menu get
-
-    app.get('/menu', async (req, res) => {
-      try {
-        const result = await menuCollection.find().toArray();
-        res.send(result);
-      } catch (error) {
-        console.log(error);
-      }
-    })
-
-    // reviews get
-    app.get('/reviews', async (req, res) => {
-      try {
-        const result = await reviewsCollection.find().toArray();
-        res.send(result);
-      } catch (error) {
-        console.log(error);
-      }
-    })
-
-    //carts related crud operation
-    app.get('/carts', async (req, res) => {
-      try {
-        const email = req.query.email;
-        const query = { email: email };
-        const result = await cartsCollection.find(query).toArray();   //quary for searching based on client site query-search
-        res.send(result);
-      } catch (error) {
-        console.log(error);
-      }
-    })
-
-    app.post('/carts', async (req, res) => {
-      const cartItem = req.body;
-      console.log(cartItem);
-      const result = await cartsCollection.insertOne(cartItem);
-      res.send(result);
-    })
-
-    //cart item delete
-    app.delete('/carts/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await cartsCollection.deleteOne(query);
-      res.send(result);
-    })
-
-
-
-    //JWT related api
-    app.post('/jwt', async (req, res) => {
-      try {
-        const user = req.body;      //this is payload
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
-        res.send({ token })
-      } catch (error) {
-        console.log(error)
-      }
-    })
-
     //MiddleWears --> Varify Token 
     const varifyToken = (req, res, next) => {
       console.log('inside verified token: ', req.headers.authorization);
@@ -196,6 +132,83 @@ async function run() {
       res.send({admin});
     })
 
+
+
+    //menu get
+
+    app.get('/menu', async (req, res) => {
+      try {
+        const result = await menuCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    })
+    
+    app.post('/menu', varifyToken, varifyAdmin, async(req,res)=> {
+      try{
+        const item = req.body;
+        const result = await menuCollection.insertOne(item);
+        res.send(result);
+      }catch(error){
+        console.log(error)
+      }
+    })
+
+    // reviews get
+    app.get('/reviews', async (req, res) => {
+      try {
+        const result = await reviewsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    })
+
+    //carts related crud operation
+    app.get('/carts', async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email: email };
+        const result = await cartsCollection.find(query).toArray();   //quary for searching based on client site query-search
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    })
+
+    app.post('/carts', async (req, res) => {
+      const cartItem = req.body;
+      console.log(cartItem);
+      const result = await cartsCollection.insertOne(cartItem);
+      res.send(result);
+    })
+
+    //cart item delete
+    app.delete('/carts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    })
+
+
+
+    //JWT related api
+    app.post('/jwt', async (req, res) => {
+      try {
+        const user = req.body;      //this is payload
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+        res.send({ token })
+      } catch (error) {
+        console.log(error)
+      }
+    })
+
+
+
+
+    
 
 
     // Send a ping to confirm a successful connection
