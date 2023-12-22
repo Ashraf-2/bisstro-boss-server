@@ -134,7 +134,7 @@ async function run() {
 
 
 
-    //menu get
+    //menu related api
 
     app.get('/menu', async (req, res) => {
       try {
@@ -149,6 +149,17 @@ async function run() {
       try{
         const item = req.body;
         const result = await menuCollection.insertOne(item);
+        res.send(result);
+      }catch(error){
+        console.log(error)
+      }
+    })
+
+    app.delete('/menu/:id',varifyToken, varifyAdmin,async(req,res)=> {
+      try{
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await menuCollection.deleteOne(query);
         res.send(result);
       }catch(error){
         console.log(error)
