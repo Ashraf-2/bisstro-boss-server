@@ -144,6 +144,17 @@ async function run() {
         console.log(error);
       }
     })
+
+    app.get("/menu/:id",async (req,res) =>{
+      try{
+        const id = req.params.id;
+        const quary = {_id: new ObjectId(id)}
+        const result = await menuCollection.findOne(quary);
+        res.send(result);
+      }catch(error){
+        console.log(error)
+      }
+    })
     
     app.post('/menu', varifyToken, varifyAdmin, async(req,res)=> {
       try{
@@ -163,6 +174,29 @@ async function run() {
         res.send(result);
       }catch(error){
         console.log(error)
+      }
+    })
+
+    //menu item update - patch
+    app.patch('/menu/:id', async(req,res)=> {
+      try{
+        const item = req.body;
+        const id = req.params.id;
+        const filter = {_id: new ObjectId(id)};
+        const updatedDoc = {
+          $set: {
+            name: item.name,
+            image: item.image,
+            price: item.price,
+            category: item.category,
+            recipe: item.recipe,
+          }
+        }
+        const result = await menuCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+        
+      }catch(error){
+        console.log(error);
       }
     })
 
