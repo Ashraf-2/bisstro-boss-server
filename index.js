@@ -5,7 +5,7 @@ const app = express();
 
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
-
+const stripe = require("stripe")(process.env.SECRET_KEY_FOR_STRIPE_PAYMENT)
 //middlewear
 app.use(cors());
 app.use(express.json());
@@ -14,6 +14,7 @@ app.use(express.json());
 // console.log(process.env.DB_PASS)
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { default: Stripe } = require('stripe');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bx5otjq.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -37,6 +38,7 @@ async function run() {
     const menuCollection = client.db("bistroBossDB").collection("menu");
     const reviewsCollection = client.db("bistroBossDB").collection("reviewsCL");
     const cartsCollection = client.db("bistroBossDB").collection("cartsCL");
+    const paymentCollection = client.db("bistroBossDB").collection("paymentCL");
 
     //MiddleWears --> Varify Token 
     const varifyToken = (req, res, next) => {
@@ -46,8 +48,8 @@ async function run() {
       }
       const token = req.headers.authorization.split(' ')[1];    //use your brain to know the functionality of this line :) 😊 
 
-      jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err,decoded)=> {
-        if(err){
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
           return res.status(401).send({ message: 'Unauthorized access' })
         }
         req.decoded = decoded;
@@ -56,20 +58,20 @@ async function run() {
     }
 
     //middleWear -=> Verify Admin
-    const varifyAdmin =async (req,res,next) => {
+    const varifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = {email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === 'admin';
-      if(!isAdmin){
-        return res.status(403).send({message: "Forbidden Access"})
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access" })
       }
       next();
     }
 
 
     //user related crud operation
-    app.get('/users', varifyToken,varifyAdmin, async (req, res) => {
+    app.get('/users', varifyToken, varifyAdmin, async (req, res) => {
       try {
         const result = await userCollection.find().toArray();
         res.send(result);
@@ -116,20 +118,20 @@ async function run() {
     })
 
     //admin related api
-    app.get("/users/admin/:email",varifyToken, async(req,res)=> {
+    app.get("/users/admin/:email", varifyToken, async (req, res) => {
       const email = req.params.email;
-      if(email !== req.decoded.email){
-        return res.status(403).send({message: "Forbidden access"});
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbidden access" });
 
       }
-      const quary = {email: email};
+      const quary = { email: email };
       const user = await userCollection.findOne(quary);
       let admin = false;
-      if(user){
-        admin  = user?.role === 'admin';    //admin will true
+      if (user) {
+        admin = user?.role === 'admin';    //admin will true
         // if(user?.role ==)
       }
-      res.send({admin});
+      res.send({ admin });
     })
 
 
@@ -145,44 +147,44 @@ async function run() {
       }
     })
 
-    app.get("/menu/:id",async (req,res) =>{
-      try{
+    app.get("/menu/:id", async (req, res) => {
+      try {
         const id = req.params.id;
-        const quary = {_id: new ObjectId(id)}
+        const quary = { _id: new ObjectId(id) }
         const result = await menuCollection.findOne(quary);
         res.send(result);
-      }catch(error){
-        console.log(error)
-      }
-    })
-    
-    app.post('/menu', varifyToken, varifyAdmin, async(req,res)=> {
-      try{
-        const item = req.body;
-        const result = await menuCollection.insertOne(item);
-        res.send(result);
-      }catch(error){
+      } catch (error) {
         console.log(error)
       }
     })
 
-    app.delete('/menu/:id',varifyToken, varifyAdmin,async(req,res)=> {
-      try{
+    app.post('/menu', varifyToken, varifyAdmin, async (req, res) => {
+      try {
+        const item = req.body;
+        const result = await menuCollection.insertOne(item);
+        res.send(result);
+      } catch (error) {
+        console.log(error)
+      }
+    })
+
+    app.delete('/menu/:id', varifyToken, varifyAdmin, async (req, res) => {
+      try {
         const id = req.params.id;
-        const query = {_id: new ObjectId(id)}
+        const query = { _id: new ObjectId(id) }
         const result = await menuCollection.deleteOne(query);
         res.send(result);
-      }catch(error){
+      } catch (error) {
         console.log(error)
       }
     })
 
     //menu item update - patch
-    app.patch('/menu/:id', async(req,res)=> {
-      try{
+    app.patch('/menu/:id', async (req, res) => {
+      try {
         const item = req.body;
         const id = req.params.id;
-        const filter = {_id: new ObjectId(id)};
+        const filter = { _id: new ObjectId(id) };
         const updatedDoc = {
           $set: {
             name: item.name,
@@ -194,8 +196,8 @@ async function run() {
         }
         const result = await menuCollection.updateOne(filter, updatedDoc);
         res.send(result);
-        
-      }catch(error){
+
+      } catch (error) {
         console.log(error);
       }
     })
@@ -250,10 +252,54 @@ async function run() {
       }
     })
 
+    //Payment Intent - stripe related API crud
+    app.post('/create-payment-intent', async (req, res) => {
+      try {
+        const { price } = req.body;
+        //stripe always consider the amount of money in "poysha".
+        const amount = parseInt(price * 100);
+        console.log("payment inside the intent: ", amount);
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ['card']
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret
+        })
+      } catch (error) {
+        console.log(error)
+      }
+    })
 
 
 
-    
+    //payment
+    app.post('/payment', async(req,res)=> {
+      try{
+        const payment = req.body;
+        const paymentResult = await paymentCollection.insertOne(payment);
+        console.log('payment Info: ', payment);
+
+        //now delete each item from the cart
+        const query = {_id: {
+          $in: payment.cartIds.map(id => new ObjectId(id))    //beccause we sent many cart ids from the client side.
+        }};
+        const deleteResult = await cartsCollection.deleteMany(query);
+
+        console.log(deleteResult);
+
+        res.send({paymentResult, deleteResult});
+
+
+      }catch(error){
+        console.log(error)
+      }
+
+    })
+
 
 
     // Send a ping to confirm a successful connection
