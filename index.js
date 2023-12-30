@@ -259,7 +259,7 @@ async function run() {
         //stripe always consider the amount of money in "poysha".
         const amount = parseInt(price * 100);
         console.log("payment inside the intent: ", amount);
-        
+
         const paymentIntent = await stripe.paymentIntents.create({
           amount: amount,
           currency: "usd",
@@ -276,25 +276,41 @@ async function run() {
 
 
 
-    //payment
-    app.post('/payment', async(req,res)=> {
-      try{
+    //payment related CRUD operation
+
+    app.get('/payment/:email',varifyToken, async (req, res) => {
+      try {
+        const query = {email: req.params.email};
+        if(req.params.email !== req.decoded.email){
+          //that means banned for looking others user payment history rather than yours.
+          return res.status(403).send({message: "Forbidden access"})
+        }
+        const result = await paymentCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.log(error)
+      }
+    })
+    app.post('/payment', async (req, res) => {
+      try {
         const payment = req.body;
         const paymentResult = await paymentCollection.insertOne(payment);
         console.log('payment Info: ', payment);
 
         //now delete each item from the cart
-        const query = {_id: {
-          $in: payment.cartIds.map(id => new ObjectId(id))    //beccause we sent many cart ids from the client side.
-        }};
+        const query = {
+          _id: {
+            $in: payment.cartIds.map(id => new ObjectId(id))    //beccause we sent many cart ids from the client side.
+          }
+        };
         const deleteResult = await cartsCollection.deleteMany(query);
 
         console.log(deleteResult);
 
-        res.send({paymentResult, deleteResult});
+        res.send({ paymentResult, deleteResult });
 
 
-      }catch(error){
+      } catch (error) {
         console.log(error)
       }
 
