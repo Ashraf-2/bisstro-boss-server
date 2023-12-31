@@ -316,7 +316,29 @@ async function run() {
 
     })
 
+    //stats- or admin analytics
+    app.get('/admin-stats', async(req,res) => {
+      try{
+        const users = await userCollection.estimatedDocumentCount();
 
+        const menuItems = await menuCollection.estimatedDocumentCount();
+        const orders = await paymentCollection.estimatedDocumentCount();
+
+        //this is not the best way.
+        const payments = await paymentCollection.find().toArray();
+        const revenew = payments.reduce((sum,item) => sum+item.price,0)
+        res.send({
+          users,
+          menuItems,
+          orders,
+          revenew,
+
+        })
+      }catch(err){
+        console.log(err)
+
+      }
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
