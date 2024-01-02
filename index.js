@@ -278,12 +278,12 @@ async function run() {
 
     //payment related CRUD operation
 
-    app.get('/payment/:email',varifyToken, async (req, res) => {
+    app.get('/payment/:email', varifyToken, async (req, res) => {
       try {
-        const query = {email: req.params.email};
-        if(req.params.email !== req.decoded.email){
+        const query = { email: req.params.email };
+        if (req.params.email !== req.decoded.email) {
           //that means banned for looking others user payment history rather than yours.
-          return res.status(403).send({message: "Forbidden access"})
+          return res.status(403).send({ message: "Forbidden access" })
         }
         const result = await paymentCollection.find(query).toArray();
         res.send(result);
@@ -317,14 +317,15 @@ async function run() {
     })
 
     //stats- or admin analytics
-    app.get('/admin-stats', async(req,res) => {
-      try{
+    app.get('/admin-stats', async (req, res) => {
+      try {
         const users = await userCollection.estimatedDocumentCount();
 
         const menuItems = await menuCollection.estimatedDocumentCount();
         const orders = await paymentCollection.estimatedDocumentCount();
 
         //this is not the best way.
+        /** 
         const payments = await paymentCollection.find().toArray();
         const revenew = payments.reduce((sum,item) => sum+item.price,0)
         res.send({
@@ -334,15 +335,66 @@ async function run() {
           revenew,
 
         })
-      }catch(err){
-        console.log(err)
+        */
+        const result = await paymentCollection.aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: '$price'
+              }
+            }
+          }
+        ]).toArray();
 
+        const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+        res.send({ revenue, users, menuItems, orders });
+
+      } catch (err) {
+        console.log(err)
+      }
+    })
+
+
+    //order status
+    /* Non Efficient Way */
+
+    app.get('/order-stats', async (req, res) => {
+      try {
+        const result = await paymentCollection.aggregate([
+          {
+            $unwind: '$menuItemsIds'
+          },
+          {
+            $lookup: {
+              from: 'menu',
+              localField: 'menuItemIds',
+              foreignField: '_id',
+              as: 'menuItems'
+            }
+          },
+          {
+            $unwind: '$menuItems'
+          },
+          {
+            $group: {
+              _id: '$menuItems.category',
+              quantity: {
+                $sum: 1
+              },
+              totalRevenue: { $sum: '$menuItems.price' }
+            }
+          }
+        ]).toArray();
+        res.send({result});
+      } catch (error) {
+        console.log(error)
       }
     })
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
